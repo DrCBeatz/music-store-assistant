@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Music Store Assistant{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/mdb.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/music-store-assistant-home.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script defer src="{% static 'js/mdb.min.js' %}"></script>
+    <script defer src="{% static 'js/htmx.min.js' %}"></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">Music Store Assistant</a>
+            <button  class="navbar-toggler collapsed" type="button" data-mdb-toggle="collapse" data-mdb-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div id="navbar" class="navbar-collapse collapse">
+                {% comment %} <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'expert-list' %}">Experts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'document-list' %}">Documents</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'conversation-list' %}">Conversations</a>
+                    </li>
+                </ul> {% endcomment %}
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <div class="nav-item ">
+                    <a
+                      class="nav-link"
+                      href="{% url 'logout' %}"
+                      role="button"
+                      >Logout</i
+                    ></a>
+                  </div>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+    
+    <header class="my-4 text-center">
+        <h1 class="title">{{ title }}</h1>
+            <hr>
+        </header>
+        
+        
+        
+        <main>
+            {% block content %}
+            
+            {% endblock %}
+        </main>
+        
+    </div>
+    </body>
+    </html>
+    
