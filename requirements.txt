@@ -13,3 +13,5 @@ django-crispy-forms==2.3
 crispy-bootstrap5==2024.2
 openai==1.56.2
 django-htmx==1.16.0
+python-decouple==3.8
+ShopifyAPI==12.7.0
