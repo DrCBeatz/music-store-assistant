@@ -309,75 +309,76 @@ tools = [
     }
 ]
 
-while True:
-    user_input = input(":")
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant. You can send emails, retrieve product information by SKU, and update product fields by SKU. Use 'send_email', 'get_product_info_by_sku', or 'update_product_by_sku' functions as needed."},
-        {"role": "user", "content": user_input},
-    ]
+if __name__ == "__main__":
+    while True:
+        user_input = input(":")
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant. You can send emails, retrieve product information by SKU, and update product fields by SKU. Use 'send_email', 'get_product_info_by_sku', or 'update_product_by_sku' functions as needed."},
+            {"role": "user", "content": user_input},
+        ]
 
-    completion = client.chat.completions.create(
-        model='gpt-4o-mini',
-        messages=messages,
-        tools=tools,
-    )
+        completion = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=messages,
+            tools=tools,
+        )
 
-    message = completion.choices[0].message
+        message = completion.choices[0].message
 
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            tool_name = tool_call.function.name
-            args = eval(tool_call.function.arguments)
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                args = eval(tool_call.function.arguments)
 
-            if tool_name == "send_email":
-                response = send_email(args["recipient"], args["subject"], args["body"])
-                messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
+                if tool_name == "send_email":
+                    response = send_email(args["recipient"], args["subject"], args["body"])
+                    messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
 
-            elif tool_name == "get_product_info_by_sku":
-                response = get_product_info_by_sku(args["sku"])
-                # Add the tool's return to the messages
-                messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
-                # Prompt the model to provide a summary to the user
-                messages.append({"role": "system", "content": "Please summarize the product information requested above for the user in a helpful manner."})
+                elif tool_name == "get_product_info_by_sku":
+                    response = get_product_info_by_sku(args["sku"])
+                    # Add the tool's return to the messages
+                    messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
+                    # Prompt the model to provide a summary to the user
+                    messages.append({"role": "system", "content": "Please summarize the product information requested above for the user in a helpful manner."})
 
-                followup_completion = client.chat.completions.create(
-                    model='gpt-4o-mini',
-                    messages=messages,
-                    tools=tools,
-                )
-                final_message = followup_completion.choices[0].message
-                print(final_message.content)
+                    followup_completion = client.chat.completions.create(
+                        model='gpt-4o-mini',
+                        messages=messages,
+                        tools=tools,
+                    )
+                    final_message = followup_completion.choices[0].message
+                    print(final_message.content)
 
-            elif tool_name == "update_product_by_sku":
-                update_fields = {k: v for k, v in args.items() if k != "sku"}
-                response = update_product_by_sku(args["sku"], update_fields)
-                messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
-                # Add a system or assistant message to prompt the model:
-                messages.append({"role": "system", "content": "The update has been processed. Provide a confirmation message to the user."})
+                elif tool_name == "update_product_by_sku":
+                    update_fields = {k: v for k, v in args.items() if k != "sku"}
+                    response = update_product_by_sku(args["sku"], update_fields)
+                    messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
+                    # Add a system or assistant message to prompt the model:
+                    messages.append({"role": "system", "content": "The update has been processed. Provide a confirmation message to the user."})
 
-                followup_completion = client.chat.completions.create(
-                    model='gpt-4o-mini',
-                    messages=messages,
-                    tools=tools,
-                )
-                final_message = followup_completion.choices[0].message
-                print(final_message.content)
-            
-            elif tool_name == "create_product_with_sku":
-                # Extract fields from args, excluding sku
-                create_fields = {k: v for k, v in args.items() if k != "sku"}
-                response = create_product_with_sku(args["sku"], **create_fields)
-                messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
-                # After creation, prompt the model to provide a confirmation
-                messages.append({"role": "system", "content": "The product has been created. Provide a confirmation message to the user."})
+                    followup_completion = client.chat.completions.create(
+                        model='gpt-4o-mini',
+                        messages=messages,
+                        tools=tools,
+                    )
+                    final_message = followup_completion.choices[0].message
+                    print(final_message.content)
+                
+                elif tool_name == "create_product_with_sku":
+                    # Extract fields from args, excluding sku
+                    create_fields = {k: v for k, v in args.items() if k != "sku"}
+                    response = create_product_with_sku(args["sku"], **create_fields)
+                    messages.append({"role": "function", "name": tool_name, "content": json.dumps(response)})
+                    # After creation, prompt the model to provide a confirmation
+                    messages.append({"role": "system", "content": "The product has been created. Provide a confirmation message to the user."})
 
-                followup_completion = client.chat.completions.create(
-                    model='gpt-4o-mini',
-                    messages=messages,
-                    tools=tools,
-                )
-                final_message = followup_completion.choices[0].message
-                print(final_message.content)
-    
-    else:
-        print(message.content)
+                    followup_completion = client.chat.completions.create(
+                        model='gpt-4o-mini',
+                        messages=messages,
+                        tools=tools,
+                    )
+                    final_message = followup_completion.choices[0].message
+                    print(final_message.content)
+        
+        else:
+            print(message.content)
