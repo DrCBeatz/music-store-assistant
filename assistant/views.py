@@ -1,21 +1,23 @@
 # assistant/views.py
 
-from django.shortcuts import render
-from openai import OpenAI
-from .forms import QuestionForm
-from .models import Contact, Conversation, Message
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from environs import Env
-import requests
-import json
-
-# Import the new Shopify-related functions from shopify_chat_cli.py
+from .forms import QuestionForm
+from .models import Conversation, Message
 from .shopify_chat_cli import (
     get_product_info_by_sku,
     update_product_by_sku,
     create_product_with_sku,
+    create_products_from_csv,
+    update_products_from_csv,
 )
+from environs import Env
+import requests
+import json
+import csv
+from io import TextIOWrapper
+import tempfile
+from openai import OpenAI
 
 env = Env()
 env.read_env()
@@ -31,7 +33,6 @@ MAX_TOKENS = 300
 
 PROMPT = """Answer the question based on the context below."""
 
-# Updated tools including Shopify-related functions
 tools = [
     {
         "type": "function",
@@ -108,20 +109,62 @@ tools = [
                 "required": ["sku"]
             }
         }
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_products_from_csv",
+            "description": "Create multiple products from a CSV file. The CSV must have a 'sku' column.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {"type": "string", "description": "The name of the CSV file (temp file)."}
+                },
+                "required": ["filename"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_products_from_csv",
+            "description": "Update multiple existing products from a CSV file by SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {"type": "string", "description": "The name of the CSV file (temp file)."}
+                },
+                "required": ["filename"]
+            }
+        }
+    },
 ]
 
-def send_email(recipient, subject, body):
+def send_email(recipient, subject, body, attachment=None):
     mailgun_domain = env("MAILGUN_DOMAIN")
     mailgun_api_key = env("MAILGUN_API_KEY")
     from_email = env("FROM_EMAIL")
 
+    data = {
+        "from": from_email,
+        "to": recipient,
+        "subject": subject,
+        "text": body
+    }
+
+    files = []
+    if attachment:
+        # attachment is a Django UploadedFile, which has name and file attributes
+        files.append(
+            ("attachment", (attachment.name, attachment.file, "application/octet-stream"))
+        )
+
     try:
-        print(f"Sending email to: {recipient}, Subject: {subject}, Body: {body}")
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data={"from": from_email, "to": recipient, "subject": subject, "text": body},
+            data=data,
+            files=files if files else None
         )
         response.raise_for_status()
         return {"status": "success", "details": response.json()}
@@ -132,13 +175,14 @@ def answer_question(
     model=MODEL,
     question="What is your store phone number?",
     max_len=MAX_LEN,
-    size="ada",
     debug=False,
     max_tokens=MAX_TOKENS,
-    stop_sequence=None,
+    uploaded_file=None,
+    csv_filename=None,
 ):
     """
     Return the assistant's entire response, including model output and tool call results.
+    Handles tool calls and can attach the uploaded file if requested.
     """
     context = ""
     if debug:
@@ -155,7 +199,7 @@ def answer_question(
                 },
                 {"role": "user", "content": prompt},
             ],
-            model=MODEL,
+            model=model,
             tools=tools,
             temperature=0,
         )
@@ -163,15 +207,19 @@ def answer_question(
         message = response.choices[0].message
         answer = message.content if message.content else ""
 
-        # Handle tool calls (e.g., get/update product info)
+        # Handle tool calls
         if message.tool_calls:
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
                 args = json.loads(tool_call.function.arguments)
 
                 if tool_name == "send_email":
+                    # If we have an uploaded file, attach it
                     email_response = send_email(
-                        args["recipient"], args["subject"], args["body"]
+                        args["recipient"],
+                        args["subject"],
+                        args["body"],
+                        attachment=uploaded_file if uploaded_file else None
                     )
                     answer += f"\n\nEmail Response:\n{json.dumps(email_response, indent=2)}"
 
@@ -189,6 +237,22 @@ def answer_question(
                     create_response = create_product_with_sku(args["sku"], **create_fields)
                     answer += f"\n\nCreate Product Response:\n{json.dumps(create_response, indent=2)}"
 
+                elif tool_name == "create_products_from_csv":
+                    # Ensure we have a csv_filename
+                    if csv_filename:
+                        create_response = create_products_from_csv(csv_filename)
+                        answer += f"\n\nCreate Products From CSV Response:\n{json.dumps(create_response, indent=2)}"
+                    else:
+                        answer += "\n\nError: No CSV file provided."
+
+                elif tool_name == "update_products_from_csv":
+                    # Ensure we have a csv_filename
+                    if csv_filename:
+                        update_response = update_products_from_csv(csv_filename)
+                        answer += f"\n\nUpdate Products From CSV Response:\n{json.dumps(update_response, indent=2)}"
+                    else:
+                        answer += "\n\nError: No CSV file provided."
+
         return answer
     except Exception as e:
         print(e)
@@ -198,17 +262,26 @@ def answer_question(
 @login_required
 def home(request):
     if request.htmx and request.method == "POST":
-        form = QuestionForm(request.POST)
+        form = QuestionForm(request.POST, request.FILES)
         if form.is_valid():
             question = form.cleaned_data.get("question")
-            answer = answer_question(question=question, debug=DEBUG)
+            uploaded_file = form.cleaned_data.get("file")
+            csv_filename = None
 
-            # Save the conversation as before
+            # If a file was uploaded and it's a CSV, save it temporarily
+            if uploaded_file and uploaded_file.name.endswith('.csv'):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
+                    for chunk in uploaded_file.chunks():
+                        tmp_file.write(chunk)
+                csv_filename = tmp_file.name
+
+            # Generate the answer from the assistant, passing uploaded file and csv_filename
+            answer = answer_question(question=question, debug=DEBUG, uploaded_file=uploaded_file, csv_filename=csv_filename)
+
+            # Handle conversation logic
             if "conversation_id" not in request.session:
                 user = request.user
-                conversation = Conversation.objects.create(
-                    title=question, user=user
-                )
+                conversation = Conversation.objects.create(title=question, user=user)
                 request.session["conversation_id"] = conversation.id
             else:
                 conversation_id = request.session["conversation_id"]
@@ -221,12 +294,8 @@ def home(request):
                 context=""
             )
 
-            # Now 'answer' contains the full response from the assistant plus tool outputs
             return render(request, "answer.html", {"answer": answer, "question": question})
+
     else:
         form = QuestionForm()
-    return render(
-        request,
-        "home.html",
-        {"form": form, "title": "Music Store Assistant"},
-    )
+    return render(request, "home.html", {"form": form, "title": "Music Store Assistant"})
