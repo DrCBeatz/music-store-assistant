@@ -1,3 +1,5 @@
+# assistant/forms.py
+
 from django import forms
 
 class QuestionForm(forms.Form):
@@ -8,4 +10,8 @@ class QuestionForm(forms.Form):
                 "placeholder": "Ask a question...",
             }
         )
+    )
+    file = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={"class": "form-control-file"})
     )
