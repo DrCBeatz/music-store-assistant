@@ -154,9 +154,10 @@ def send_email(recipient, subject, body, attachment=None):
 
     files = []
     if attachment:
-        # attachment is a Django UploadedFile, which has name and file attributes
+        attachment.seek(0)  # Ensure we are at the start of the file
+        file_content = attachment.read()  # Read the file content
         files.append(
-            ("attachment", (attachment.name, attachment.file, "application/octet-stream"))
+            ("attachment", (attachment.name, file_content, "application/octet-stream"))
         )
 
     try:
@@ -170,6 +171,7 @@ def send_email(recipient, subject, body, attachment=None):
         return {"status": "success", "details": response.json()}
     except requests.exceptions.RequestException as e:
         return {"status": "error", "details": str(e)}
+
 
 def answer_question(
     model=MODEL,
@@ -238,20 +240,21 @@ def answer_question(
                     answer += f"\n\nCreate Product Response:\n{json.dumps(create_response, indent=2)}"
 
                 elif tool_name == "create_products_from_csv":
-                    # Ensure we have a csv_filename
                     if csv_filename:
+                        # Always use our local csv_filename
                         create_response = create_products_from_csv(csv_filename)
                         answer += f"\n\nCreate Products From CSV Response:\n{json.dumps(create_response, indent=2)}"
                     else:
                         answer += "\n\nError: No CSV file provided."
-
+                
                 elif tool_name == "update_products_from_csv":
-                    # Ensure we have a csv_filename
                     if csv_filename:
+                        # Always use our local csv_filename
                         update_response = update_products_from_csv(csv_filename)
                         answer += f"\n\nUpdate Products From CSV Response:\n{json.dumps(update_response, indent=2)}"
                     else:
                         answer += "\n\nError: No CSV file provided."
+
 
         return answer
     except Exception as e:
