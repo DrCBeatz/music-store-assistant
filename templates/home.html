@@ -1,10 +1,9 @@
-<!--- templates/home.html -->
+<!-- templates/home.html -->
 
 {% extends "_base.html" %}
 {% load static %}
 
 {% block title %}Music Store Assistant{% endblock %}
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -23,25 +22,32 @@
     
     {% block content %}
         <h2 id="title" class="title text-center my-4">Ask the Music Store Assistant</h2>
-         
-        <br>
-            <form method="POST" >
-                {% csrf_token %}   
-                    {% for field in form %}
-                        <div class="form-outline mb-4">  
-                            {{ field }}
-                        </div>
-                    {% endfor %}
-                <button hx-post="{% url 'home' %}" hx-swap="afterbegin" hx-trigger="click" hx-target="#answer" hx-indicator="#spinner" class="btn btn-primary btn-block">Submit Question</button>
-            </form>
 
-            <div class="text-center">
-                <img  id="spinner" class="htmx-indicator mt-2 mb-1" src="{% static '/img/bars-rotate-fade.svg' %}" >
-            </div>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-outline mb-4">
+                    {{ field.label_tag }}  
+                    {{ field }}
+                </div>
+            {% endfor %}
+            <button 
+                hx-post="{% url 'home' %}" 
+                hx-swap="afterbegin" 
+                hx-trigger="click" 
+                hx-target="#answer" 
+                hx-indicator="#spinner" 
+                class="btn btn-primary btn-block">
+                Submit Question
+            </button>
+        </form>
 
-            <div id="answer">
-            </div>
+        <div class="text-center">
+            <img id="spinner" class="htmx-indicator mt-2 mb-1" src="{% static '/img/bars-rotate-fade.svg' %}">
+        </div>
 
-{% endblock %}
+        <div id="answer"></div>
+
+    {% endblock %}
 </body>
 </html>
