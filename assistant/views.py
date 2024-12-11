@@ -10,6 +10,9 @@ from .shopify_chat_cli import (
     create_product_with_sku,
     create_products_from_csv,
     update_products_from_csv,
+    put_product_on_sale,
+    take_product_off_sale,
+    disable_product_by_sku,
 )
 from environs import Env
 import requests
@@ -113,6 +116,60 @@ tools = [
     {
         "type": "function",
         "function": {
+            "name": "put_product_on_sale",
+            "description": "Put a product variant on sale by SKU",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sku": {"type": "string", "description": "The SKU of the product variant"},
+                    "sale_price": {"type": "string", "description": "The discounted sale price"},
+                    "regular_price": {"type": "string", "description": "The original regular price"},
+                    "tags_to_add": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags to add to the product, e.g. ['on-sale']"
+                    },
+                },
+                "required": ["sku", "sale_price", "regular_price"],
+            },
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "take_product_off_sale",
+            "description": "Remove the sale pricing from a product variant by SKU and restore original price",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sku": {"type": "string", "description": "The SKU of the product variant"},
+                    "tags_to_remove": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags to remove from the product, e.g. ['on-sale']"
+                    },
+                },
+                "required": ["sku"],
+            },
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "disable_product_by_sku",
+            "description": "Disable a product variant by SKU. Sets title, product_type, tags, body_html and variant.inventory_policy to indicate unavailability.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sku": {"type": "string", "description": "The SKU of the product to disable"}
+                },
+                "required": ["sku"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "create_products_from_csv",
             "description": "Create multiple products from a CSV file. The CSV must have a 'sku' column.",
             "parameters": {
@@ -182,17 +239,12 @@ def answer_question(
     uploaded_file=None,
     csv_filename=None,
 ):
-    """
-    Return the assistant's entire response, including model output and tool call results.
-    Handles tool calls and can attach the uploaded file if requested.
-    """
     context = ""
     if debug:
         print("Context:\n" + context)
 
     try:
         prompt = f"""{PROMPT}```Context: {context}```\n\n---\n\n``Question: {question}```\n Answer:"""
-
         response = client.chat.completions.create(
             messages=[
                 {
@@ -216,7 +268,6 @@ def answer_question(
                 args = json.loads(tool_call.function.arguments)
 
                 if tool_name == "send_email":
-                    # If we have an uploaded file, attach it
                     email_response = send_email(
                         args["recipient"],
                         args["subject"],
@@ -241,19 +292,37 @@ def answer_question(
 
                 elif tool_name == "create_products_from_csv":
                     if csv_filename:
-                        # Always use our local csv_filename
                         create_response = create_products_from_csv(csv_filename)
                         answer += f"\n\nCreate Products From CSV Response:\n{json.dumps(create_response, indent=2)}"
                     else:
                         answer += "\n\nError: No CSV file provided."
-                
+
                 elif tool_name == "update_products_from_csv":
                     if csv_filename:
-                        # Always use our local csv_filename
                         update_response = update_products_from_csv(csv_filename)
                         answer += f"\n\nUpdate Products From CSV Response:\n{json.dumps(update_response, indent=2)}"
                     else:
                         answer += "\n\nError: No CSV file provided."
+
+                # Add these elif blocks to handle the new functions:
+                elif tool_name == "put_product_on_sale":
+                    sku = args["sku"]
+                    sale_price = args["sale_price"]
+                    regular_price = args["regular_price"]
+                    tags_to_add = args.get("tags_to_add", ["on-sale"])
+                    sale_response = put_product_on_sale(sku, sale_price, regular_price, tags_to_add)
+                    answer += f"\n\nPut Product On Sale Response:\n{json.dumps(sale_response, indent=2)}"
+
+                elif tool_name == "take_product_off_sale":
+                    sku = args["sku"]
+                    tags_to_remove = args.get("tags_to_remove", ["on-sale"])
+                    off_sale_response = take_product_off_sale(sku, tags_to_remove)
+                    answer += f"\n\nTake Product Off Sale Response:\n{json.dumps(off_sale_response, indent=2)}"
+
+                elif tool_name == "disable_product_by_sku":
+                    sku = args["sku"]
+                    disable_response = disable_product_by_sku(sku)
+                    answer += f"\n\nDisable Product Response:\n{json.dumps(disable_response, indent=2)}"
 
 
         return answer
@@ -271,17 +340,14 @@ def home(request):
             uploaded_file = form.cleaned_data.get("file")
             csv_filename = None
 
-            # If a file was uploaded and it's a CSV, save it temporarily
             if uploaded_file and uploaded_file.name.endswith('.csv'):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
                     for chunk in uploaded_file.chunks():
                         tmp_file.write(chunk)
                 csv_filename = tmp_file.name
 
-            # Generate the answer from the assistant, passing uploaded file and csv_filename
             answer = answer_question(question=question, debug=DEBUG, uploaded_file=uploaded_file, csv_filename=csv_filename)
 
-            # Handle conversation logic
             if "conversation_id" not in request.session:
                 user = request.user
                 conversation = Conversation.objects.create(title=question, user=user)
@@ -298,7 +364,6 @@ def home(request):
             )
 
             return render(request, "answer.html", {"answer": answer, "question": question})
-
     else:
         form = QuestionForm()
     return render(request, "home.html", {"form": form, "title": "Music Store Assistant"})
