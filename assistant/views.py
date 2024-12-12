@@ -274,7 +274,7 @@ def answer_question(
                 tool_name = tool_call.function.name
                 args = json.loads(tool_call.function.arguments)
 
-                elif tool_name == "send_email":
+                if tool_name == "send_email":
                     email_response = send_email(
                         args["recipient"],
                         args["subject"],
