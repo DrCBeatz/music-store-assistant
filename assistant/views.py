@@ -274,14 +274,29 @@ def answer_question(
                 tool_name = tool_call.function.name
                 args = json.loads(tool_call.function.arguments)
 
-                if tool_name == "send_email":
+                elif tool_name == "send_email":
                     email_response = send_email(
                         args["recipient"],
                         args["subject"],
                         args["body"],
                         attachment=uploaded_file if uploaded_file else None
                     )
-                    answer += f"\n\nEmail Response:\n{json.dumps(email_response, indent=2)}"
+                    # Print JSON to console for debugging
+                    print("Email Response JSON for debugging:", json.dumps(email_response, indent=2))
+                
+                    if email_response["status"] == "success":
+                        # Create a user-friendly message to display on the template
+                        answer += (
+                            "\n\nEmail was successfully sent!\n"
+                            f"Recipient: {args['recipient']}\n"
+                            f"Subject: {args['subject']}\n"
+                            f"Body: {args['body']}"
+                        )
+                        if uploaded_file:
+                            answer += f"\nAttachment: {uploaded_file.name}"
+                    else:
+                        answer += f"\n\nFailed to send email.\nError: {email_response['details']}"
+
 
                 elif tool_name == "get_product_info_by_sku":
                     product_info = get_product_info_by_sku(args["sku"])
@@ -306,7 +321,6 @@ def answer_question(
                     else:
                         answer += "\n\nError: No CSV file provided."
 
-                # Add these elif blocks to handle the new functions:
                 elif tool_name == "put_product_on_sale":
                     sku = args["sku"]
                     sale_price = args["sale_price"]
