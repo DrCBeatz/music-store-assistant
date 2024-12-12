@@ -411,26 +411,103 @@ def answer_question(
                     else:
                         answer += "\n\nError: No CSV file provided."
 
-
                 elif tool_name == "put_product_on_sale":
                     sku = args["sku"]
                     sale_price = args["sale_price"]
                     regular_price = args["regular_price"]
                     tags_to_add = args.get("tags_to_add", ["on-sale"])
                     sale_response = put_product_on_sale(sku, sale_price, regular_price, tags_to_add)
-                    answer += f"\n\nPut Product On Sale Response:\n{json.dumps(sale_response, indent=2)}"
+
+                    # Print JSON to console for debugging
+                    print("Put Product On Sale Response JSON:", json.dumps(sale_response, indent=2))
+
+                    if sale_response.get("status") == "success":
+                        # Retrieve updated product info
+                        try:
+                            updated_info = get_product_info_by_sku(sku)
+                            answer += (
+                                "\n\nProduct successfully put on sale!\n"
+                                f"SKU: {updated_info.get('sku', sku)}\n"
+                                f"Title: {updated_info.get('title', 'No title')}\n"
+                                f"New Price: {updated_info.get('price', 'N/A')} (was {regular_price}, now {sale_price})\n"
+                                f"Compare at Price: {updated_info.get('compare_at_price', 'N/A')}\n"
+                                f"Available Quantity: {updated_info.get('available', 'N/A')}\n"
+                                f"Vendor: {updated_info.get('vendor', 'N/A')}\n"
+                                f"Type: {updated_info.get('product_type', 'N/A')}\n"
+                                f"Tags: {updated_info.get('tags', '')}\n"
+                                "Description:\n"
+                                f"{updated_info.get('body_html', 'No description')}"
+                            )
+                        except Exception as e:
+                            answer += (
+                                "\n\nProduct put on sale successfully, but unable to retrieve updated product info.\n"
+                                f"SKU: {sku}\n"
+                                f"Error: {str(e)}"
+                            )
+                    else:
+                        error_message = sale_response.get("message", "Unknown error")
+                        answer += f"\n\nFailed to put product on sale.\nError: {error_message}"
 
                 elif tool_name == "take_product_off_sale":
                     sku = args["sku"]
                     tags_to_remove = args.get("tags_to_remove", ["on-sale"])
                     off_sale_response = take_product_off_sale(sku, tags_to_remove)
-                    answer += f"\n\nTake Product Off Sale Response:\n{json.dumps(off_sale_response, indent=2)}"
+
+                    # Print JSON for debugging
+                    print("Take Product Off Sale Response JSON:", json.dumps(off_sale_response, indent=2))
+
+                    if off_sale_response.get("status") == "success":
+                        # Retrieve updated product info
+                        try:
+                            updated_info = get_product_info_by_sku(sku)
+                            answer += (
+                                "\n\nProduct successfully taken off sale!\n"
+                                f"SKU: {updated_info.get('sku', sku)}\n"
+                                f"Title: {updated_info.get('title', 'No title')}\n"
+                                f"Current Price: {updated_info.get('price', 'N/A')} (sale pricing removed)\n"
+                                f"Compare at Price: {updated_info.get('compare_at_price', 'N/A')}\n"
+                                f"Available Quantity: {updated_info.get('available', 'N/A')}\n"
+                                f"Vendor: {updated_info.get('vendor', 'N/A')}\n"
+                                f"Type: {updated_info.get('product_type', 'N/A')}\n"
+                                f"Tags: {updated_info.get('tags', '')}\n"
+                                "Description:\n"
+                                f"{updated_info.get('body_html', 'No description')}"
+                            )
+                        except Exception as e:
+                            answer += (
+                                "\n\nProduct taken off sale successfully, but unable to retrieve updated product info.\n"
+                                f"SKU: {sku}\n"
+                                f"Error: {str(e)}"
+                            )
+                    else:
+                        error_message = off_sale_response.get("message", "Unknown error")
+                        answer += f"\n\nFailed to take product off sale.\nError: {error_message}"
 
                 elif tool_name == "disable_product_by_sku":
                     sku = args["sku"]
                     disable_response = disable_product_by_sku(sku)
-                    answer += f"\n\nDisable Product Response:\n{json.dumps(disable_response, indent=2)}"
 
+                    # Print JSON for debugging
+                    print("Disable Product Response JSON:", json.dumps(disable_response, indent=2))
+
+                    if disable_response.get("status") == "success":
+                        updated_fields = disable_response.get("updated_fields", {})
+                        answer += (
+                            "\n\nProduct successfully disabled!\n"
+                            f"SKU: {updated_fields.get('sku', sku)}\n"
+                            f"Title: {updated_fields.get('title', 'No title')}\n"
+                            f"Price: {updated_fields.get('price', 'N/A')} (No longer available)\n"
+                            f"Compare at Price: {updated_fields.get('compare_at_price', 'N/A')}\n"
+                            f"Available Quantity: {updated_fields.get('available', 'N/A')}\n"
+                            f"Vendor: {updated_fields.get('vendor', 'N/A')}\n"
+                            f"Type: {updated_fields.get('product_type', 'N/A')}\n"
+                            f"Tags: {updated_fields.get('tags', '')}\n"
+                            "Description:\n"
+                            f"{updated_fields.get('body_html', 'No description')}"
+                        )
+                    else:
+                        error_message = disable_response.get("message", "Unknown error")
+                        answer += f"\n\nFailed to disable product.\nError: {error_message}"
 
         return answer
     except Exception as e:
