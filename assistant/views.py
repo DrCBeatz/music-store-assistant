@@ -297,16 +297,76 @@ def answer_question(
                     else:
                         answer += f"\n\nFailed to send email.\nError: {email_response['details']}"
 
-
                 elif tool_name == "get_product_info_by_sku":
                     product_info = get_product_info_by_sku(args["sku"])
-                    answer += f"\n\nProduct Info:\n{json.dumps(product_info, indent=2)}"
+                    # Print JSON for debugging
+                    print("Product Info JSON for debugging:", json.dumps(product_info, indent=2))
+
+                    # Create a user-friendly message
+                    answer += (
+                        "\n\nProduct Information:\n"
+                        f"SKU: {product_info.get('sku', 'Unknown')}\n"
+                        f"Title: {product_info.get('title', 'No title')}\n"
+                        f"Price: {product_info.get('price', 'N/A')}\n"
+                        f"Compare at Price: {product_info.get('compare_at_price', 'N/A')}\n"
+                        f"Available Quantity: {product_info.get('available', 'N/A')}\n"
+                        f"Vendor: {product_info.get('vendor', 'N/A')}\n"
+                        f"Type: {product_info.get('product_type', 'N/A')}\n"
+                        f"Tags: {product_info.get('tags', '')}\n"
+                        "Description:\n"
+                        f"{product_info.get('body_html', 'No description')}"
+                    )
 
                 elif tool_name == "update_product_by_sku":
                     update_fields = {k: v for k, v in args.items() if k != "sku"}
                     update_response = update_product_by_sku(args["sku"], update_fields)
-                    answer += f"\n\nUpdate Product Response:\n{json.dumps(update_response, indent=2)}"
+                    # Print JSON for debugging
+                    print("Update Product Response JSON for debugging:", json.dumps(update_response, indent=2))
 
+                    if update_response.get("status") == "success":
+                        updated_info = update_response.get("updated_fields", {})
+                        answer += (
+                            "\n\nProduct successfully updated!\n"
+                            f"SKU: {updated_info.get('sku', args['sku'])}\n"
+                            f"Title: {updated_info.get('title', 'No title')}\n"
+                            f"Price: {updated_info.get('price', 'N/A')}\n"
+                            f"Compare at Price: {updated_info.get('compare_at_price', 'N/A')}\n"
+                            f"Available Quantity: {updated_info.get('available', 'N/A')}\n"
+                            f"Vendor: {updated_info.get('vendor', 'N/A')}\n"
+                            f"Type: {updated_info.get('product_type', 'N/A')}\n"
+                            f"Tags: {updated_info.get('tags', '')}\n"
+                            "Description:\n"
+                            f"{updated_info.get('body_html', 'No description')}"
+                        )
+                    else:
+                        error_message = update_response.get("message", "Unknown error")
+                        answer += f"\n\nFailed to update product.\nError: {error_message}"
+
+                elif tool_name == "create_product_with_sku":
+                    create_fields = {k: v for k, v in args.items() if k != "sku"}
+                    create_response = create_product_with_sku(args["sku"], **create_fields)
+                    # Print JSON for debugging
+                    print("Create Product Response JSON for debugging:", json.dumps(create_response, indent=2))
+
+                    if create_response.get("status") == "success":
+                        product_info = create_response.get("product_info", {})
+                        answer += (
+                            "\n\nProduct successfully created!\n"
+                            f"SKU: {product_info.get('sku', args['sku'])}\n"
+                            f"Title: {product_info.get('title', 'No title')}\n"
+                            f"Price: {product_info.get('price', 'N/A')}\n"
+                            f"Compare at Price: {product_info.get('compare_at_price', 'N/A')}\n"
+                            f"Available Quantity: {product_info.get('available', 'N/A')}\n"
+                            f"Vendor: {product_info.get('vendor', 'N/A')}\n"
+                            f"Type: {product_info.get('product_type', 'N/A')}\n"
+                            f"Tags: {product_info.get('tags', '')}\n"
+                            "Description:\n"
+                            f"{product_info.get('body_html', 'No description')}"
+                        )
+                    else:
+                        error_message = create_response.get("message", "Unknown error")
+                        answer += f"\n\nFailed to create product.\nError: {error_message}"
+                        
                 elif tool_name == "create_products_from_csv":
                     if csv_filename:
                         create_response = create_products_from_csv(csv_filename)
