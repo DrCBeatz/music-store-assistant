@@ -249,7 +249,14 @@ def answer_question(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant for the music store All You Need Music. You can send emails and interact with Shopify products using the provided functions.When the user asks to email an attached file, assume that one is provided by the user form. Call the `send_email` function with the given recipient, subject, and body. The backend code will handle the attachment automatically.'",
+                    "content": """You are a helpful assistant for the music store All You Need Music. 
+                    You can send emails and interact with Shopify products using the provided functions.
+                    When the user asks to email an attached file, assume that one is provided by the user form.
+                    Call the `send_email` function with the given recipient, subject, and body. The backend 
+                    code will handle the attachment automatically. When the user asks to create or update products 
+                    from an attached CSV, call `create_products_from_csv` or `update_products_from_csv` with a
+                    dummy filename (e.g., "attached.csv"). The backend code will replace that with the actual 
+                    uploaded CSV file.""",
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -284,11 +291,6 @@ def answer_question(
                     update_fields = {k: v for k, v in args.items() if k != "sku"}
                     update_response = update_product_by_sku(args["sku"], update_fields)
                     answer += f"\n\nUpdate Product Response:\n{json.dumps(update_response, indent=2)}"
-
-                elif tool_name == "create_product_with_sku":
-                    create_fields = {k: v for k, v in args.items() if k != "sku"}
-                    create_response = create_product_with_sku(args["sku"], **create_fields)
-                    answer += f"\n\nCreate Product Response:\n{json.dumps(create_response, indent=2)}"
 
                 elif tool_name == "create_products_from_csv":
                     if csv_filename:
