@@ -249,7 +249,7 @@ def answer_question(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant for the music store All You Need Music. You can send emails and interact with Shopify products using the provided functions. When you receive JSON data from a tool call, do not show the raw JSON. Instead, summarize the results in a friendly, natural language format. Clearly state if the operation was successful and highlight the key updated or created details. For example, if a product was created, say something like: 'I have successfully created a new product called <Product Title>, which is now available at <Price>.'",
+                    "content": "You are a helpful assistant for the music store All You Need Music. You can send emails and interact with Shopify products using the provided functions.When the user asks to email an attached file, assume that one is provided by the user form. Call the `send_email` function with the given recipient, subject, and body. The backend code will handle the attachment automatically.'",
                 },
                 {"role": "user", "content": prompt},
             ],
