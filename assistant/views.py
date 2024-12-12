@@ -310,16 +310,47 @@ def answer_question(
                 elif tool_name == "create_products_from_csv":
                     if csv_filename:
                         create_response = create_products_from_csv(csv_filename)
-                        answer += f"\n\nCreate Products From CSV Response:\n{json.dumps(create_response, indent=2)}"
+                        # Print JSON to console for debugging
+                        print("Create Products From CSV Response JSON:", json.dumps(create_response, indent=2))
+                        
+                        if create_response.get("status") == "success":
+                            created_products = create_response.get("created_products", [])
+                            product_list = "\n".join([f"- {p.get('sku', 'Unknown SKU')} ({p.get('title', 'No title')})" for p in created_products])
+                            
+                            answer += (
+                                "\n\nProducts were successfully created!\n"
+                                f"Number of products created: {len(created_products)}\n"
+                                f"Created Products:\n{product_list}"
+                            )
+                        else:
+                            # Handle error scenario
+                            error_details = create_response.get("details", "Unknown error")
+                            answer += f"\n\nFailed to create products from CSV.\nError: {error_details}"
                     else:
                         answer += "\n\nError: No CSV file provided."
-
+                
                 elif tool_name == "update_products_from_csv":
                     if csv_filename:
                         update_response = update_products_from_csv(csv_filename)
-                        answer += f"\n\nUpdate Products From CSV Response:\n{json.dumps(update_response, indent=2)}"
+                        # Print JSON to console for debugging
+                        print("Update Products From CSV Response JSON:", json.dumps(update_response, indent=2))
+                        
+                        if update_response.get("status") == "success":
+                            updated_products = update_response.get("updated_products", [])
+                            product_list = "\n".join([f"- {p.get('sku', 'Unknown SKU')} ({p.get('title', 'No title')})" for p in updated_products])
+                            
+                            answer += (
+                                "\n\nProducts were successfully updated!\n"
+                                f"Number of products updated: {len(updated_products)}\n"
+                                f"Updated Products:\n{product_list}"
+                            )
+                        else:
+                            # Handle error scenario
+                            error_details = update_response.get("details", "Unknown error")
+                            answer += f"\n\nFailed to update products from CSV.\nError: {error_details}"
                     else:
                         answer += "\n\nError: No CSV file provided."
+
 
                 elif tool_name == "put_product_on_sale":
                     sku = args["sku"]
