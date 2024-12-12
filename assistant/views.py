@@ -54,10 +54,10 @@ tools = [
         }
     },
     {
-        "type": "function",
-        "function": {
+    "type": "function",
+    "function": {
             "name": "get_product_info_by_sku",
-            "description": "Retrieve product information by SKU",
+            "description": "Retrieve product information by SKU, including cost.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -65,7 +65,7 @@ tools = [
                     "fields": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "A list of specific fields to return (optional)."
+                        "description": "A list of specific fields to return (optional). Possible fields: ['sku', 'title', 'price', 'compare_at_price', 'cost', 'available', 'vendor', 'product_type', 'tags', 'body_html']"
                     }
                 },
                 "required": ["sku"]
@@ -315,13 +315,14 @@ def answer_question(
                         for f, val in filtered_info.items():
                             answer += f"{f.capitalize()}: {val}\n"
                     else:
-                        # Show all fields as before
+                        # Show all fields
                         answer += (
                             "\n\nProduct Information:\n"
                             f"SKU: {product_info.get('sku', 'Unknown')}\n"
                             f"Title: {product_info.get('title', 'No title')}\n"
                             f"Price: {product_info.get('price', 'N/A')}\n"
                             f"Compare at Price: {product_info.get('compare_at_price', 'N/A')}\n"
+                            f"Cost: {product_info.get('cost', 'N/A')}\n"
                             f"Available Quantity: {product_info.get('available', 'N/A')}\n"
                             f"Vendor: {product_info.get('vendor', 'N/A')}\n"
                             f"Type: {product_info.get('product_type', 'N/A')}\n"
