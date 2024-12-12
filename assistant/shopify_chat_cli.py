@@ -317,59 +317,62 @@ def create_products_from_csv(filename):
     results = []
     with open(filename, mode='r', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
-        
-        # Check for the required field 'sku'
+
         if 'sku' not in reader.fieldnames:
             return {"status": "error", "message": "CSV must contain a 'sku' column."}
-        
+
         for row in reader:
             sku = row.get('sku', '').strip()
             if not sku:
-                # Skip rows without SKU
-                results.append({"sku": None, "status": "error", "message": "No SKU provided for this row."})
+                results.append({"sku": None, "response": {"status": "error", "message": "No SKU provided"}})
                 continue
 
-            # Extract fields if they exist, else None
-            title = row.get('title')
-            product_type = row.get('product_type')
-            vendor = row.get('vendor')
-            tags = row.get('tags')
-            body_html = row.get('body_html')
-            price = row.get('price')
-            compare_at_price = row.get('compare_at_price')
-            cost = row.get('cost')
-            available = row.get('available')
-
-            # Convert available to int if possible
-            if available:
-                try:
-                    available = int(available)
-                except:
-                    available = None
-            
-            # Call create_product_with_sku
             response = create_product_with_sku(
                 sku=sku,
-                title=title,
-                product_type=product_type,
-                vendor=vendor,
-                tags=tags,
-                body_html=body_html,
-                price=price,
-                compare_at_price=compare_at_price,
-                cost=cost,
-                available=available
+                title=row.get('title'),
+                product_type=row.get('product_type'),
+                vendor=row.get('vendor'),
+                tags=row.get('tags'),
+                body_html=row.get('body_html'),
+                price=row.get('price'),
+                compare_at_price=row.get('compare_at_price'),
+                cost=row.get('cost'),
+                available=row.get('available')
             )
             results.append({"sku": sku, "response": response})
 
-    return {"status": "success", "message": "Products processed from CSV.", "results": results}
+    # Transform 'results' into a user-friendly summary
+    created_products = []
+    error_messages = []
+
+    for r in results:
+        resp = r["response"]
+        if resp.get("status") == "success":
+            # resp["product_info"] holds details about the created product
+            product_info = resp.get("product_info", {})
+            created_products.append({
+                "sku": product_info.get("sku", r["sku"]),
+                "title": product_info.get("title", "Unknown Title")
+            })
+        else:
+            error_messages.append(f"SKU {r['sku']}: {resp.get('message', 'Unknown error')}")
+
+    if created_products:
+        return {
+            "status": "success",
+            "message": "Products processed from CSV.",
+            "created_products": created_products,
+            "errors": error_messages
+        }
+    else:
+        return {
+            "status": "error",
+            "message": "No products were successfully created.",
+            "errors": error_messages
+        }
+
 
 def update_products_from_csv(filename):
-    # This function will read from a CSV file and attempt to update existing products for each row.
-    # The CSV must have at least a "sku" column.
-    # Optional columns: title, product_type, vendor, tags, body_html, price, compare_at_price, cost, available
-    # If a product with the given SKU does not exist, it will report an error for that row.
-
     if not os.path.exists(filename):
         return {"status": "error", "message": f"File '{filename}' not found."}
 
@@ -383,45 +386,51 @@ def update_products_from_csv(filename):
         for row in reader:
             sku = row.get('sku', '').strip()
             if not sku:
-                # Skip rows without SKU
-                results.append({"sku": None, "status": "error", "message": "No SKU provided for this row."})
+                results.append({"sku": None, "response": {"status": "error", "message": "No SKU provided"}})
                 continue
 
-            # Check if product exists
-            product, variant = find_product_by_sku(sku)
-            if not product or not variant:
-                # Product doesn't exist
-                results.append({"sku": sku, "status": "error", "message": f"No product found with SKU '{sku}'."})
-                continue
-
-            # Extract fields
             update_fields = {}
-            if row.get('title'):
-                update_fields['title'] = row.get('title')
-            if row.get('product_type'):
-                update_fields['product_type'] = row.get('product_type')
-            if row.get('vendor'):
-                update_fields['vendor'] = row.get('vendor')
-            if row.get('tags'):
-                update_fields['tags'] = row.get('tags')
-            if row.get('body_html'):
-                update_fields['body_html'] = row.get('body_html')
-            if row.get('price'):
-                update_fields['price'] = row.get('price')
-            if row.get('compare_at_price'):
-                update_fields['compare_at_price'] = row.get('compare_at_price')
-            if row.get('cost'):
-                update_fields['cost'] = row.get('cost')
+            for field in ["title", "product_type", "vendor", "tags", "body_html", "price", "compare_at_price", "cost"]:
+                if row.get(field):
+                    update_fields[field] = row.get(field)
+
             if row.get('available'):
                 try:
                     update_fields['available'] = int(row.get('available'))
-                except:
+                except ValueError:
                     pass
 
-            # Update the product
             response = update_product_by_sku(sku, update_fields)
             results.append({"sku": sku, "response": response})
-    return {"status": "success", "message": "Products updated from CSV.", "results": results}
+
+    # Transform 'results' into a user-friendly summary
+    updated_products = []
+    error_messages = []
+
+    for r in results:
+        resp = r["response"]
+        if resp.get("status") == "success":
+            updated_fields = resp.get("updated_fields", {})
+            updated_products.append({
+                "sku": updated_fields.get("sku", r["sku"]),
+                "title": updated_fields.get("title", "Unknown Title")
+            })
+        else:
+            error_messages.append(f"SKU {r['sku']}: {resp.get('message', 'Unknown error')}")
+
+    if updated_products:
+        return {
+            "status": "success",
+            "message": "Products updated from CSV.",
+            "updated_products": updated_products,
+            "errors": error_messages
+        }
+    else:
+        return {
+            "status": "error",
+            "message": "No products were successfully updated.",
+            "errors": error_messages
+        }
 
 tools = [
     {
