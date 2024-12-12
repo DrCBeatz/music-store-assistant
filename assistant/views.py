@@ -61,7 +61,12 @@ tools = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "sku": {"type": "string", "description": "The SKU of the product variant"}
+                    "sku": {"type": "string", "description": "The SKU of the product variant"},
+                    "fields": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "A list of specific fields to return (optional)."
+                    }
                 },
                 "required": ["sku"]
             }
@@ -301,21 +306,29 @@ def answer_question(
                     product_info = get_product_info_by_sku(args["sku"])
                     # Print JSON for debugging
                     print("Product Info JSON for debugging:", json.dumps(product_info, indent=2))
-
-                    # Create a user-friendly message
-                    answer += (
-                        "\n\nProduct Information:\n"
-                        f"SKU: {product_info.get('sku', 'Unknown')}\n"
-                        f"Title: {product_info.get('title', 'No title')}\n"
-                        f"Price: {product_info.get('price', 'N/A')}\n"
-                        f"Compare at Price: {product_info.get('compare_at_price', 'N/A')}\n"
-                        f"Available Quantity: {product_info.get('available', 'N/A')}\n"
-                        f"Vendor: {product_info.get('vendor', 'N/A')}\n"
-                        f"Type: {product_info.get('product_type', 'N/A')}\n"
-                        f"Tags: {product_info.get('tags', '')}\n"
-                        "Description:\n"
-                        f"{product_info.get('body_html', 'No description')}"
-                    )
+                
+                    requested_fields = args.get("fields", None)  # fields is optional
+                    if requested_fields:
+                        # Filter product_info to only include requested fields
+                        filtered_info = {field: product_info.get(field, 'N/A') for field in requested_fields}
+                        answer += "\n\nRequested Product Information:\n"
+                        for f, val in filtered_info.items():
+                            answer += f"{f.capitalize()}: {val}\n"
+                    else:
+                        # Show all fields as before
+                        answer += (
+                            "\n\nProduct Information:\n"
+                            f"SKU: {product_info.get('sku', 'Unknown')}\n"
+                            f"Title: {product_info.get('title', 'No title')}\n"
+                            f"Price: {product_info.get('price', 'N/A')}\n"
+                            f"Compare at Price: {product_info.get('compare_at_price', 'N/A')}\n"
+                            f"Available Quantity: {product_info.get('available', 'N/A')}\n"
+                            f"Vendor: {product_info.get('vendor', 'N/A')}\n"
+                            f"Type: {product_info.get('product_type', 'N/A')}\n"
+                            f"Tags: {product_info.get('tags', '')}\n"
+                            "Description:\n"
+                            f"{product_info.get('body_html', 'No description')}"
+                        )
 
                 elif tool_name == "update_product_by_sku":
                     update_fields = {k: v for k, v in args.items() if k != "sku"}
