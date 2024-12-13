@@ -107,6 +107,9 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 AUTH_USER_MODEL = "accounts.CustomUser"
 
+LOGIN_URL = '/accounts/login/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
+
 # Internationalization
 
 LANGUAGE_CODE = "en-us"
