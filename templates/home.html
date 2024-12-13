@@ -27,7 +27,6 @@
             {% csrf_token %}
             {% for field in form %}
                 <div class="form-outline mb-4">
-                    {{ field.label_tag }}
                     {{ field }}
                 </div>
             {% endfor %}
@@ -41,7 +40,6 @@
                 class="btn btn-primary btn-block">
                 Submit Question
             </button>
-            <p>To schedule a CSV update, please upload a CSV and choose 'apply_time' and optionally 'revert_time'.</p>
         </form>
 
         <div class="text-center">
