@@ -4,7 +4,7 @@ from .shopify_chat_cli import update_products_from_csv, get_product_info_by_sku
 from .models import ProductSnapshot
 import os, uuid, csv
 
-def get_skus_from_csv(csv_path):
+def get_skus_from_csv(csv_path, batch_id=None):
     skus = []
     with open(csv_path, mode='r', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
@@ -17,8 +17,7 @@ def get_skus_from_csv(csv_path):
     return skus
 
 @shared_task
-def apply_csv_updates(csv_path):
-    batch_id = str(uuid.uuid4())  # Unique ID for this batch of updates
+def apply_csv_updates(csv_path, batch_id=None):
 
     # Extract SKUs from CSV to know which products we will update
     skus = get_skus_from_csv(csv_path)
