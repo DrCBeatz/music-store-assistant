@@ -21,6 +21,8 @@ import csv
 from io import TextIOWrapper
 import tempfile
 from openai import OpenAI
+import dateparser
+
 
 env = Env()
 env.read_env()
@@ -234,6 +236,26 @@ def send_email(recipient, subject, body, attachment=None):
     except requests.exceptions.RequestException as e:
         return {"status": "error", "details": str(e)}
 
+def extract_times_from_prompt(prompt):
+    # This is a simplified example. You might have a more complex logic to find two times: one for apply and one for revert.
+    # For now, let's assume the user says something like:
+    # "Please schedule this CSV update tomorrow at 3 PM and revert the next day at 5 PM."
+    
+    # Find keywords that indicate scheduling:
+    if "schedule" in prompt.lower():
+        # We need to find two times: apply_time and revert_time.
+        # This might be as simple as splitting the prompt by 'and revert' or using regex.
+        # Let's say we do something like this:
+        parts = prompt.lower().split("and revert")
+        apply_part = parts[0].strip()
+        revert_part = parts[1].strip() if len(parts) > 1 else None
+
+        # dateparser can parse relative times like "tomorrow at 3 PM"
+        apply_time = dateparser.parse(apply_part)
+        revert_time = dateparser.parse(revert_part) if revert_part else None
+
+        return apply_time, revert_time
+    return None, None
 
 def answer_question(
     model=MODEL,
@@ -273,6 +295,33 @@ def answer_question(
         message = response.choices[0].message
         answer = message.content if message.content else ""
 
+        apply_time, revert_time = extract_times_from_prompt(question)
+
+        if apply_time:
+            # The user wants scheduling.
+            # Make sure csv_filename is set, otherwise return a helpful message
+            if csv_filename:
+                from assistant.tasks import apply_csv_updates, revert_csv_updates
+                import uuid
+                
+                batch_id = str(uuid.uuid4())
+                
+                # Schedule apply updates at apply_time
+                apply_csv_updates.apply_async(args=[csv_filename, batch_id], eta=apply_time)
+                
+                scheduling_response = f"Your CSV updates have been scheduled at {apply_time}."
+                
+                # If revert_time is given, schedule revert as well
+                if revert_time:
+                    revert_csv_updates.apply_async(args=[batch_id], eta=revert_time)
+                    scheduling_response += f" They will be reverted at {revert_time}."
+                
+                # Update answer and return immediately, no need to handle tool calls.
+                return scheduling_response
+            else:
+                # No CSV provided but user asked to schedule
+                return "You asked to schedule updates, but no CSV file was provided."
+            
         # Handle tool calls
         if message.tool_calls:
             for tool_call in message.tool_calls:

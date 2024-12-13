@@ -18,3 +18,4 @@ ShopifyAPI==12.7.0
 celery==5.4.0
 django-celery-beat==2.7.0
 redis==5.2.1
+dateparser==1.2.0
