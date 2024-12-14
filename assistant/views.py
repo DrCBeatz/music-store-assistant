@@ -586,7 +586,7 @@ def home(request):
                     for chunk in uploaded_file.chunks():
                         f.write(chunk)
                 
-                if uploaded_file.name.endswith('.csv') and ("update" in question.lower() or "create" in quesrion.lower()):
+                if uploaded_file.name.endswith('.csv') and ("update" in question.lower() or "create" in question.lower()):
                     csv_filename = attachment_path
             else:
                 attachment_path = None
