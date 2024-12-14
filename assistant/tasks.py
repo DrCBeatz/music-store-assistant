@@ -2,7 +2,8 @@
 from celery import shared_task
 from .shopify_chat_cli import update_products_from_csv, get_product_info_by_sku
 from .models import ProductSnapshot
-import os, uuid, csv
+from .views import send_email
+import os, csv
 
 def get_skus_from_csv(csv_path, batch_id=None):
     skus = []
@@ -74,3 +75,16 @@ def revert_csv_updates(batch_id):
 
     snapshots.update(reverted=True)
     print(f"Reverted batch {batch_id}")
+
+@shared_task
+def send_scheduled_email(recipients, subject, body, attachment_path=None):
+    attachment = None
+    if attachment_path and os.path.exists(attachment_path):
+        attachment = open(attachment_path, 'rb')
+    try:
+        response = send_email(recipients, subject, body, attachment=attachment)
+        print(f"Scheduled email response: {response}")
+        return response
+    finally:
+        if attachment:
+            attachment.close()

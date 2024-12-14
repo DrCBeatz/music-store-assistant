@@ -249,6 +249,7 @@ def answer_question(
     csv_filename=None,
     apply_time=None,
     revert_time=None,
+    attachment_path=None,
 ):
     # If apply_time is given by the form and user requested scheduling:
     if apply_time and csv_filename:
@@ -301,27 +302,45 @@ def answer_question(
                 args = json.loads(tool_call.function.arguments)
 
                 if tool_name == "send_email":
-                    email_response = send_email(
-                        args["recipients"],
-                        args["subject"],
-                        args["body"],
-                        attachment=uploaded_file if uploaded_file else None
-                    )
-                    # Print JSON to console for debugging
-                    print("Email Response JSON for debugging:", json.dumps(email_response, indent=2))
-                
-                    if email_response["status"] == "success":
-                        # Create a user-friendly message to display on the template
+                    recipients = args["recipients"]
+                    subject = args["subject"]
+                    body = args["body"]
+
+                    # If apply_time is provided, schedule the email
+                    if apply_time:
+                        from assistant.tasks import send_scheduled_email
+                        # Use the attachment_path if available
+                        # Note: attachment_path must be known or passed into answer_question
+                        # You might pass it in similarly to how you pass csv_filename.
+                        send_scheduled_email.apply_async(
+                            args=[recipients, subject, body, attachment_path],
+                            eta=apply_time
+                        )
                         answer += (
-                            "\n\nEmail was successfully sent!\n"
-                            f"Recipients: {args['recipients']}\n"
-                            f"Subject: {args['subject']}\n"
-                            f"Body: {args['body']}"
+                            f"\n\nYour email has been scheduled at {apply_time}!\n"
+                            f"Recipients: {recipients}\n"
+                            f"Subject: {subject}\n"
+                            f"Body: {body}"
                         )
                         if uploaded_file:
-                            answer += f"\nAttachment: {uploaded_file.name}"
+                            answer += f"\nAttachment scheduled: {uploaded_file.name}"
                     else:
-                        answer += f"\n\nFailed to send email.\nError: {email_response['details']}"
+                        # No scheduling, send immediately
+                        email_response = send_email(
+                            recipients, subject, body,
+                            attachment=uploaded_file if uploaded_file else None
+                        )
+                        if email_response["status"] == "success":
+                            answer += (
+                                "\n\nEmail was successfully sent!\n"
+                                f"Recipients: {recipients}\n"
+                                f"Subject: {subject}\n"
+                                f"Body: {body}"
+                            )
+                            if uploaded_file:
+                                answer += f"\nAttachment: {uploaded_file.name}"
+                        else:
+                            answer += f"\n\nFailed to send email.\nError: {email_response['details']}"
 
                 elif tool_name == "get_product_info_by_sku":
                     product_info = get_product_info_by_sku(args["sku"])
@@ -561,12 +580,16 @@ def home(request):
             revert_time = form.cleaned_data.get("revert_time")
             csv_filename = None
 
-            if uploaded_file and uploaded_file.name.endswith('.csv'):
-                csv_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
-                with open(csv_path, 'wb') as f:
+            if uploaded_file:
+                attachment_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
+                with open(attachment_path, 'wb') as f:
                     for chunk in uploaded_file.chunks():
                         f.write(chunk)
-                csv_filename = csv_path
+                
+                if uploaded_file.name.endswith('.csv') and "update" in question.lower():
+                    csv_filename = attachment_path
+            else:
+                attachment_path = None
 
             answer = answer_question(
                 question=question,
@@ -574,7 +597,8 @@ def home(request):
                 uploaded_file=uploaded_file, 
                 csv_filename=csv_filename,
                 apply_time=apply_time,
-                revert_time=revert_time
+                revert_time=revert_time,
+                attachment_path=attachment_path
             )
 
             if "conversation_id" not in request.session:
