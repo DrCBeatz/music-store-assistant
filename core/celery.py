@@ -2,6 +2,8 @@
 import os
 from celery import Celery
 
+broker_connection_retry_on_startup = True
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 
 app = Celery("core")
