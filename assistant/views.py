@@ -41,15 +41,19 @@ tools = [
         "type": "function",
         "function": {
             "name": "send_email",
-            "description": "Send an email to a recipient",
+            "description": "Send an email to one or more recipients",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "recipient": {"type": "string"},
+                    "recipients": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "A list of email addresses to send the message to"
+                    },
                     "subject": {"type": "string"},
                     "body": {"type": "string"},
                 },
-                "required": ["recipient", "subject", "body"],
+                "required": ["recipients", "subject", "body"],
             },
         }
     },
@@ -202,22 +206,23 @@ tools = [
     },
 ]
 
-def send_email(recipient, subject, body, attachment=None):
+def send_email(recipients, subject, body, attachment=None):
     mailgun_domain = env("MAILGUN_DOMAIN")
     mailgun_api_key = env("MAILGUN_API_KEY")
     from_email = env("FROM_EMAIL")
 
+    # Mailgun can accept a list of recipients directly
     data = {
         "from": from_email,
-        "to": recipient,
+        "to": recipients,  # <-- This is now a list
         "subject": subject,
-        "text": body
+        "text": body,
     }
 
     files = []
     if attachment:
-        attachment.seek(0)  # Ensure we are at the start of the file
-        file_content = attachment.read()  # Read the file content
+        attachment.seek(0)
+        file_content = attachment.read()
         files.append(
             ("attachment", (attachment.name, file_content, "application/octet-stream"))
         )
@@ -297,7 +302,7 @@ def answer_question(
 
                 if tool_name == "send_email":
                     email_response = send_email(
-                        args["recipient"],
+                        args["recipients"],
                         args["subject"],
                         args["body"],
                         attachment=uploaded_file if uploaded_file else None
@@ -309,7 +314,7 @@ def answer_question(
                         # Create a user-friendly message to display on the template
                         answer += (
                             "\n\nEmail was successfully sent!\n"
-                            f"Recipient: {args['recipient']}\n"
+                            f"Recipients: {args['recipients']}\n"
                             f"Subject: {args['subject']}\n"
                             f"Body: {args['body']}"
                         )
