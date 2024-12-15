@@ -6,8 +6,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 
 app = Celery("core")
 
-# Load config from Django settings; the prefix CELERY_ is optional
+# Load config from Django settings
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# Discover tasks from all installed apps
+# Set Celery configuration option
+app.conf.broker_connection_retry_on_startup = True
+
 app.autodiscover_tasks()

@@ -3,7 +3,8 @@
 services:
   web:
     build: .
-    command: gunicorn core.wsgi -b 0.0.0.0:80
+    user: root
+    command: sh -c "chown -R celeryuser:celeryuser /code/media && su celeryuser -c 'gunicorn core.wsgi -b 0.0.0.0:80'"
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
