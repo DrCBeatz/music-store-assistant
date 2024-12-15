@@ -25,21 +25,35 @@
 
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {% for field in form %}
-                <div class="form-outline mb-4">
-                    {{ field }}
-                </div>
-            {% endfor %}
-            <button 
-                hx-post="{% url 'home' %}" 
-                hx-swap="afterbegin" 
-                hx-trigger="click" 
-                hx-target="#answer" 
-                hx-indicator="#spinner" 
-                hx-encoding="multipart/form-data"
-                class="btn btn-primary btn-block">
-                Submit Question
-            </button>
+                    <div class="form-outline mb-4">
+                        {{ form.question }}
+                    </div>
+                    
+                    <div class="form-outline mb-4">
+                        {{ form.file.label_tag }}
+                        {{ form.file }}
+                    </div>
+                    
+                    {{ form.apply_time.label_tag }}
+                    <div class="form-outline mb-4">
+                        {{ form.apply_time }}
+                    </div>
+                    
+                    {{ form.revert_time.label_tag }}
+                    <div class="form-outline mb-4">
+                        {{ form.revert_time }}
+                    </div>
+                    
+                    <button 
+                        hx-post="{% url 'home' %}" 
+                        hx-swap="afterbegin" 
+                        hx-trigger="click" 
+                        hx-target="#answer" 
+                        hx-indicator="#spinner" 
+                        hx-encoding="multipart/form-data"
+                        class="btn btn-primary btn-block">
+                        Submit Question
+                    </button>
         </form>
 
         <div class="text-center">
