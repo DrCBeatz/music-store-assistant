@@ -21,7 +21,7 @@ import csv
 from io import TextIOWrapper
 from openai import OpenAI
 from django.conf import settings
-from discounts import calculate_cost
+from .discounts import calculate_cost
 
 env = Env()
 env.read_env()
