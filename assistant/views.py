@@ -21,6 +21,7 @@ import csv
 from io import TextIOWrapper
 from openai import OpenAI
 from django.conf import settings
+from discounts import calculate_cost
 
 env = Env()
 env.read_env()
@@ -201,6 +202,21 @@ tools = [
                     "filename": {"type": "string", "description": "The name of the CSV file (temp file)."}
                 },
                 "required": ["filename"]
+            }
+        }
+    },
+    {
+    "type": "function",
+        "function": {
+            "name": "calculate_cost",
+            "description": "Calculate the cost after applying a discount code to a retail price.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "retail": {"type": "number", "description": "The original retail price"},
+                    "discount": {"type": "string", "description": "The discount code to be applied"}
+                },
+                "required": ["retail"]
             }
         }
     },
@@ -562,6 +578,20 @@ def answer_question(
                     else:
                         error_message = disable_response.get("message", "Unknown error")
                         answer += f"\n\nFailed to disable product.\nError: {error_message}"
+                        
+                elif tool_name == "calculate_cost":
+                    # Extract arguments
+                    retail = args["retail"]
+                    discount_code = args.get("discount", "A")  # Default to 'A' if not provided
+                
+                    # Call the calculate_cost function
+                    cost_result = calculate_cost(retail, discount_code)
+                
+                    # Append the result to the answer displayed to the user
+                    answer += (
+                        f"\n\nThe cost for a retail price of ${retail:.2f} with discount code '{discount_code}' "
+                        f"is calculated as: ${cost_result:.2f}"
+                    )
 
         return answer
     except Exception as e:
