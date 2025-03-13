@@ -12,7 +12,7 @@ OPENAI_API_KEY = config("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 ACCESS_TOKEN = config('SHOPIFY_ACCESS_TOKEN')
-STORE_NAME = "aynm-test-store.myshopify.com"
+STORE_NAME = config('SHOPIFY_STORE_URL')
 VERSION = "2024-10"
 
 session = shopify.Session(STORE_NAME, VERSION, ACCESS_TOKEN)
